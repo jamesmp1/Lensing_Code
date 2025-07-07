@@ -46,60 +46,70 @@ def rays_from_point_params(r_s, l_x, l_y, l_z, l_o):
     ecc2 = np.sqrt(1+(b2/r_s)**2)
     return [(p1, ecc1, theta1, phi0, 1), (p2, ecc2, theta2, phi0, -1)]
 
-def cluster_source(x0, y0, z0, radius, r_space, theta_space, phi_space):
+def cluster_source(x0, y0, z0, r, source_res):
     points = []
-    rs = np.arange(r_space, radius, r_space)
-    thetas = np.arange(theta_space, np.pi, theta_space)
-    phis = np.arange(phi_space/2, 2*np.pi, phi_space)
-    for r in rs:
-        for theta in thetas:
-            for phi in phis:
-                x = x0 + r*np.cos(phi)*np.sin(theta)
-                y = y0 + r*np.sin(phi)*np.sin(theta)
-                z = z0 + r*np.cos(theta)
-                point = (x, y, z)
-                points.append(point)
+    thetas = np.arange(source_res, np.pi, source_res)
+    phis = np.arange(source_res/2, 2*np.pi, source_res)
+    for theta in thetas:
+        for phi in phis:
+            x = x0 + r*np.cos(phi)*np.sin(theta)
+            y = y0 + r*np.sin(phi)*np.sin(theta)
+            z = z0 + r*np.cos(theta)
+            point = (x, y, z)
+            points.append(point)
     return points
 
 start_time = t.time()
 
 to_centre = False
 res = 100
-l_x_max = 0.025
+l_x_max = 0.02
 
 r_s = 2
 l_z = 500
 l_y = 0
 l_o = 1000
-source_size = 1
+source_size = 3
+source_res = np.pi/48
+lens_size = 3.01
+# X = 0.1
 
 theta_E = np.sqrt(2*r_s*l_z/(l_o*(l_o+l_z)))
-r_E = theta_E*(l_o+l_z)
+r_E = theta_E*(l_o)
+# lens_size = r_E/X
 
 if to_centre:
     l_xs = np.linspace(0, l_x_max, res)
 else:
     l_xs = np.linspace(-l_x_max, l_x_max, res)
 
+# source = np.array(cluster_source(0, l_y, l_z, source_size, np.pi/24))
+
 mags = []
 for i in tqdm(range(res)):
     l_x = l_xs[i]
-    source = cluster_source(l_x, l_y, l_z, source_size, source_size/3, np.pi/12, np.pi/12)
+    source = cluster_source(l_x, l_y, l_z, source_size, source_res)
     mag1 = 0
     mag2 = 0
     for point in source:
         x, y, z = point
+        if x**2+y**2 < lens_size**2:
+            continue
         params1, params2 = rays_from_point_params(r_s, x, y, z, l_o)
         mag1 += asymptote_poi(params1, l_x, l_y, l_z)[3]
         mag2 += asymptote_poi(params2, l_x, l_y, l_z)[3]
-        # mag1 += poi1[3]
-        # mag2 += poi2[3]
     mags.append(mag1+mag2)
 
 print("Runtime:", t.time()-start_time)
 
 _, ax = plt.subplots()
 
-ax.scatter(l_xs, mags)
+ax.plot(l_xs, mags, marker="x")
+
+# fig = plt.figure(dpi=100)
+# ax = fig.add_subplot(projection="3d")
+
+# ax.set_aspect("equal")
+# ax.scatter(source[:,0], source[:,1], source[:,2])
 
 plt.show()
